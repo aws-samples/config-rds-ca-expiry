@@ -1,0 +1,135 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for a custom AWS Config rule to detect RDS instances with expiring CA certificates.
+
+Resources:
+  CertExpirationCheckLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+            import boto3
+            import datetime
+            import json
+
+            def lambda_handler(event, context):
+                invoking_event = json.loads(event['invokingEvent'])
+                rds = boto3.client('rds')
+                config = boto3.client('config')
+                token = event['resultToken']
+                notification_creation_time = invoking_event['notificationCreationTime']
+
+                # Get all RDS instances
+                response = rds.describe_db_instances()
+                dbs = response['DBInstances']
+
+                evaluations = []
+
+                for db in dbs:
+                    db_identifier = db['DBInstanceIdentifier']
+                    
+                    # Describe certificates for the RDS instance
+                    certs = rds.describe_certificates(
+                        Filters=[
+                            {
+                                'Name': 'certificate-id',
+                                'Values': [
+                                    db['CACertificateIdentifier']
+                                ]
+                            }
+                        ]
+                    )
+                    
+                    # Pull the certificate authority from the certificate info.
+                    ca = certs['Certificates'][0]['CertificateIdentifier']
+
+                    # Check if the CA is the expiring 2019 RDS CA.
+                    if ca == 'rds-ca-2019':
+                        evaluation_status = 'NON_COMPLIANT'
+                    else:
+                        evaluation_status = 'COMPLIANT'
+
+
+                    # Report evaluations to AWS Config
+                    config_response = config.put_evaluations(
+                        Evaluations=[
+                            {
+                                'ComplianceResourceType': 'AWS::RDS::DBInstance',
+                                'ComplianceResourceId': db_identifier,
+                                'ComplianceType': evaluation_status,
+                                'Annotation': f'Certificate using {ca}.',
+                                'OrderingTimestamp': notification_creation_time
+                            }
+                        ],
+                        ResultToken=token,
+                        TestMode=False
+                    )
+
+                return {
+                    'statusCode': 200,
+                    'body': 'Evaluations reported to AWS Config'
+                }
+
+      Handler: index.lambda_handler
+      Runtime: python3.12
+      Timeout: 120
+      Role: !GetAtt CertExpirationCheckLambdaExecutionRole.Arn
+
+  CertExpirationCheckLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/:*'
+              - Effect: Allow
+                Action:
+                  - config:PutEvaluations
+                  - rds:DescribeCertificates
+                  - rds:DescribeDBInstances
+                Resource: '*'
+
+  CertExpirationCheckConfigRule:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: rds-old-ca-check
+      Description: Detect RDS instances using the expiring 2019 CA.
+      EvaluationModes: 
+        - Mode: DETECTIVE
+      Scope: 
+        ComplianceResourceTypes:
+          - AWS::RDS::DBInstance
+      Compliance: {}
+      Source:
+        Owner: CUSTOM_LAMBDA
+        SourceDetails:
+          - EventSource: aws.config
+            MessageType: ScheduledNotification
+            MaximumExecutionFrequency: TwentyFour_Hours
+        SourceIdentifier: !GetAtt CertExpirationCheckLambdaFunction.Arn
+      InputParameters: {}
+    DependsOn: ConfigPermissionToCallLambda
+
+  ConfigPermissionToCallLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: !GetAtt CertExpirationCheckLambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: config.amazonaws.com
+      SourceAccount: !Ref 'AWS::AccountId' 
