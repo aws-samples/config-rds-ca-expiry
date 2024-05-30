@@ -108,7 +108,7 @@ Resources:
   CertExpirationCheckConfigRule:
     Type: AWS::Config::ConfigRule
     Properties:
-      ConfigRuleName: rds-old-ca-check
+      ConfigRuleName: rds-has-expiring-ca
       Description: Detect RDS instances using the expiring 2019 CA.
       EvaluationModes: 
         - Mode: DETECTIVE
