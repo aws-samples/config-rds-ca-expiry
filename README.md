@@ -1,14 +1,8 @@
-## APG Pattern - Detect RDS instances with expiring CA certificates
+## Detect RDS instances with expiring CA certificates
 
-TODO: Update URLs!
+Following security best practices, it is recommended to [encrypt data in-transit between application servers and relational databases](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html). Secure Socket Layer (SSL) or Transport Layer Security (TLS) connections can perform server identity verification by validating the server certificate installed on the database instances. Database certificate authenticity verification is achieved by signing them with a Certificate Authority (CA) that has its own expiration dates.
 
-This sample code is part of an APG Pattern titled [Detect RDS instances with expiring CA certificates
-](https://aws.amazon.com/).
-
-The [config-rds-ca-expiry](config-rds-ca-expiry.yaml) CloudFormation template deploys an AWS Config
-rule, AWS Lambda function, and necessary permissions to detect AWS RDS instances that use a CA certificate that is soon to expiry.
-
-For more information, please review the [APG Pattern](https://aws.amazon.com/).
+Although the [Amazon RDS and Aurora](https://docs.aws.amazon.com/rds/) console notifies customers about instances requiring certificate updates, customers must log into each AWS account and navigate to relevant page in each region. This task becomes more complex when customers need to assess certificate validity across numerous AWS accounts managed by [AWS Organizations](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_introduction.html). This pattern provisions an AWS Config rule, AWS Lambda function, along with necessary permissions. It can be deployed either into a single account as an [AWS CloudFormation](https://docs.aws.amazon.com/cloudformation/) Stack or across the entire AWS Organization as an AWS CloudFormation [StackSet](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-cloudformation-stackset.html).
 
 ## Security
 
