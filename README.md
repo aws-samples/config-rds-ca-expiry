@@ -1,4 +1,4 @@
-## Detect RDS instances with expiring CA certificates
+## Detect Amazon RDS instances with expiring CA certificates
 
 Following security best practices, it is recommended to [encrypt data in-transit between application servers and relational databases](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html). Secure Socket Layer (SSL) or Transport Layer Security (TLS) connections can perform server identity verification by validating the server certificate installed on the database instances. Database certificate authenticity verification is achieved by signing them with a Certificate Authority (CA) that has its own expiration dates.
 
