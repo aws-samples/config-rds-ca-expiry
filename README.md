@@ -10,7 +10,7 @@ The code in this repository helps you set up the following target architecture.
 
 ![Target Architecture](./target-architecture.png)
 
-For prerequisites and instructions for using this AWS Prescriptive Guidance pattern, see Detect Amazon RDS and Aurora database instances that have expiring CA certificates.
+For prerequisites and instructions for using this AWS Prescriptive Guidance pattern, see [Detect Amazon RDS and Aurora database instances that have expiring CA certificates](https://docs.aws.amazon.com/prescriptive-guidance/latest/patterns/detect-rds-instances-expiring-certificates.html).
 
 ## Security
 
